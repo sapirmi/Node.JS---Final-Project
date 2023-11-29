@@ -1,0 +1,174 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous">
+</head>
+
+<body onload="main()">
+
+    <div class="topnav">
+        <a href="./departments.html" style="border: 1px solid black; color: black;">Departments</a>
+        <a href="./employees.html" style="border: 1px solid black; color: black;">Employees</a>
+        <a href="./shifts.html" style="border: 1px solid black; color: black;">Shifts</a>
+        <a href="./users.html" style="border: 1px solid black; color: black;">Users</a>
+        <a style="border: 1px solid black;" onclick="logout()">Logout</a>
+      </div>
+      
+    <div style="height: 50px;"></div>
+        <h1 class="display-3 text-center">Update Employee</h1><br>
+
+    <form>
+        <div class="text-center">
+            Full Name<br>
+            <input type="text" id="name" style="width:300px; background-color: rgb(151, 220, 230);" ><br><br>
+        </div>
+        
+        <div class="text-center">
+            Department<br>
+            <select id="dropDownDeps">
+                <option> </option>
+            </select>
+            <br><br>
+        </div>
+    </form>
+
+
+    <div class="text-center">
+        <input type="button" value="Update employee" onclick="updateEmp()">
+        <input type="button" value="Delete employee" onclick="deleteDep()"><br/><br/>
+        <div id="message" style="color: red;"></div>
+    </div><br>
+
+    <div class="container">
+        <table class="table table-bordered" id="table">
+            <thead>
+                <tr>
+                    <th style="background-color: rgb(151, 220, 230);">Date</th>
+                    <th style="background-color: rgb(151, 220, 230);">From</th>
+                    <th style="background-color: rgb(151, 220, 230);">To</th>
+                </tr>
+        </thead>
+        <tbody id="table"></tbody>   
+        </table>
+    
+    </div>
+
+    <div class="text-center">
+        <div id="message2" style="color: red;"></div><br/>
+        <input type="button" value="Start shift" onclick="startShift()">
+        <input type="button" value="End shift" onclick="endShift()">
+    </div><br/>
+
+<script>
+
+    const urlDeps = "http://localhost:3000/departments"
+    const urlEmps = "http://localhost:3000/employees"
+    const urlShits = "http://localhost:3000/shifts"
+    const empID = new URLSearchParams(window.location.search).get("id")
+    const empName = document.getElementById("name")
+    const dropDeps = document.getElementById("dropDownDeps")
+    const tbody = document.getElementById("table")
+    const message = document.getElementById("message")
+    const message2 = document.getElementById("message2")
+    const date = new Date()
+    const accessToken = sessionStorage['accessToken'];
+    const paramsToken = { headers: { 'accessToken': accessToken }}
+
+    function logout(){
+        sessionStorage.clear()
+        location.href = "./login.html"
+      }
+
+    async function getData(url){
+        const resp = await fetch(url, {...paramsToken, method: "GET"})
+        const data = await resp.json()
+        if(resp.status == 500 || resp.status == 401){
+          sessionStorage["error"] = data["message"]
+          location.href = "./login.html"
+        }
+        return data
+    }
+
+    function setDropDown(arr){
+        dropDeps.innerHTML = ""
+        arr.forEach(item => {
+            const newOptionDep = document.createElement("option")
+            newOptionDep.innerText = item.depInfo.depName
+            newOptionDep.value = item.depInfo.depId
+            dropDeps.appendChild(newOptionDep)
+        })
+    }
+
+    async function main(){
+        const dataEmp = await getData(`${urlEmps}/byEmp/${empID}`)
+        empName.value = dataEmp.fullName
+        const dataDeps = await getData(urlDeps)
+        setDropDown(dataDeps)
+        dropDeps.value = dataEmp.depId
+
+        dataEmp.shiftsInfo.forEach((shift) => {
+          const date = new Date(shift.shiftDate)
+          const cleanDate = date.toLocaleDateString('he-IL', { year: 'numeric', month: 'numeric', day: 'numeric' });
+          const newRow = tbody.insertRow();
+          newRow.insertCell(0).textContent = cleanDate;
+          newRow.insertCell(1).textContent = shift.startHour;
+          newRow.insertCell(2).textContent = shift.endHour;
+        })
+    }
+
+    async function updateEmp(){   
+        const obj = {fullName: empName.value, depId: dropDeps.value}
+        const params = {method: "PUT",
+                    body: JSON.stringify(obj),
+                    headers: {...paramsToken.headers, "Content-type": "application/json"}}
+        const resp = await fetch(`${urlEmps}/${empID}`, params)
+        const messageText = await resp.json()
+        message.innerText = messageText.Message
+    }
+
+    async function deleteDep(){
+        const params = {method: "DELETE",
+            headers: {...paramsToken.headers, "Content-type": "application/json"}}
+        const resp = await fetch(`${urlEmps}/${empID}`, params)
+        const messageText = await resp.json()
+        message.innerText = messageText.Message
+    }
+
+    async function startShift(){
+        const obj = {empId: empID, shiftDate: date.toDateString(),
+                    startHour: date.getHours()}
+        const params = {method: "POST",
+            body: JSON.stringify(obj),
+            headers: {...paramsToken.headers, "Content-type": "application/json"}}
+        const resp = await fetch(urlShits, params)
+        const data = await resp.json()
+        message2.innerText = data.Message
+    }
+
+    async function endShift(){
+        const dataEmp = await getData(`${urlEmps}/byEmp/${empID}`)
+        const lastShift = dataEmp.shiftsInfo.slice(-1)[0].shiftId
+        const obj = {endHour: date.getHours()}
+        const params = {method: "PUT",
+            body: JSON.stringify(obj),
+            headers: {...paramsToken.headers, "Content-type": "application/json"}}
+        const resp = await fetch(`${urlShits}/${lastShift}`, params)
+        const data = await resp.json()
+        message2.innerText = data.Message
+    }
+
+</script>
+
+</body>
+
+</html>

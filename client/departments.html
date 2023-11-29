@@ -1,0 +1,100 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous"
+    />
+  </head>
+
+  <body onload="main()">
+
+    <div class="topnav">
+      <a href="./departments.html" style="border: 1px solid black; color: black;">Departments</a>
+      <a href="./employees.html" style="border: 1px solid black; color: black;">Employees</a>
+      <a href="./shifts.html" style="border: 1px solid black; color: black;">Shifts</a>
+      <a href="./users.html" style="border: 1px solid black; color: black;">Users</a>
+      <a style="border: 1px solid black;" onclick="logout()">Logout</a>
+    </div>
+
+    <div style="height: 50px"></div>
+    <h1 class="display-3 text-center">Departments</h1>
+    <br />
+
+    <div class="container">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th style="background-color: rgb(151, 220, 230)">Department</th>
+            <th style="background-color: rgb(151, 220, 230)">Manager</th>
+            <th style="background-color: rgb(151, 220, 230)">Employees</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <br />
+
+    <div class="text-center">
+      <input type="button" value="Add New Department" onclick="redirect(`./newDep.html`)" />
+    </div>
+
+    <script>
+
+    const urlDeps = "http://localhost:3000/departments"
+    const tbody = document.getElementById("tbody");
+    const accessToken = sessionStorage['accessToken'];
+    const paramsToken = { headers: { 'accessToken': accessToken }}
+
+      function redirect(url) {
+        location.href = url
+      }
+
+      function logout(){
+        sessionStorage.clear()
+        location.href = "./login.html"
+      }
+
+      async function getData(){
+        const resp = await fetch(urlDeps, {...paramsToken, method: "GET"})
+        const data = await resp.json();
+        if(resp.status == 500 || resp.status == 401){
+          sessionStorage["error"] = data["message"]
+          location.href = "./login.html"
+        }
+        return data
+      }
+
+      async function main() {
+        const data = await getData()
+        data.forEach((dep, index) => {
+          const newRow = tbody.insertRow();
+          const depCell = newRow.insertCell(0);
+          const depLink = document.createElement("a");
+          depLink.textContent = dep.depInfo.depName;
+          depLink.href = `./editDep.html?id=${dep.depInfo.depId}`;
+          depCell.appendChild(depLink);
+
+          newRow.insertCell(1).textContent = dep.managerInfo.managerName;
+
+          const empCell = newRow.insertCell(2);
+          dep.employees.forEach((emp) => {
+            const empLink = document.createElement("a");
+            empLink.textContent = emp.empName;
+            empLink.href = `./editEmp.html?id=${emp.empId}`;
+            empCell.appendChild(empLink);
+            empCell.appendChild(document.createElement("br"));
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

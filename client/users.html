@@ -1,0 +1,78 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous"
+    />
+</head>
+
+
+<body onload="getData()">
+
+    <div class="topnav">
+        <a href="./departments.html" style="border: 1px solid black; color: black;">Departments</a>
+        <a href="./employees.html" style="border: 1px solid black; color: black;">Employees</a>
+        <a href="./shifts.html" style="border: 1px solid black; color: black;">Shifts</a>
+        <a href="./users.html" style="border: 1px solid black; color: black;">Users</a>
+        <a style="border: 1px solid black;" onclick="logout()">Logout</a>
+      </div>
+      
+    <div style="height: 50px;"></div>
+        <h1 class="display-3 text-center">Users</h1>
+
+    <div style="height: 70px;"></div>
+
+    <div class="container">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th style="background-color: rgb(151, 220, 230);">User</th>
+                    <th style="background-color: rgb(151, 220, 230);">Max Actions</th>
+                    <th style="background-color: rgb(151, 220, 230);">Actions Allowed For Today</th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>  
+        </table>
+
+    </div>
+        
+<script>
+
+const urlAct = "http://localhost:3000/actions"
+const tbody = document.getElementById("tbody")
+const accessToken = sessionStorage['accessToken'];
+const paramsToken = { headers: { 'accessToken': accessToken }}
+
+
+function logout(){
+        sessionStorage.clear()
+        location.href = "./login.html"
+      }
+
+async function getData(){
+    const resp = await fetch(urlAct, {...paramsToken, method:"GET"})
+    const {actions} = await resp.json()
+    if(resp.status == 500 || resp.status == 401){
+        sessionStorage["error"] = "You must login first"
+        location.href = "./login.html"}
+    
+    actions.forEach(user => {
+        const newRow = tbody.insertRow()
+        newRow.insertCell(0).textContent = user.username
+        newRow.insertCell(1).textContent = user.maxActions
+        newRow.insertCell(2).textContent = user.actionsAllowed
+    })
+}
+</script>
+
+</body>
+</html>

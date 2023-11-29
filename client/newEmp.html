@@ -1,0 +1,106 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous"
+    />
+</head>
+
+
+<body onload="getData()">
+
+    <div class="topnav">
+        <a href="./departments.html" style="border: 1px solid black; color: black;">Departments</a>
+        <a href="./employees.html" style="border: 1px solid black; color: black;">Employees</a>
+        <a href="./shifts.html" style="border: 1px solid black; color: black;">Shifts</a>
+        <a href="./users.html" style="border: 1px solid black; color: black;">Users</a>
+        <a style="border: 1px solid black;" onclick="logout()">Logout</a>
+      </div>
+      
+    <div style="height: 50px;"></div>
+        <h1 class="display-3 text-center">Add New Employee</h1>
+
+    <div style="height: 70px;"></div>
+
+    <div class="text-center">
+        Full Name: <br>
+        <input type="text" id="name" style="width:300px; background-color: rgb(151, 220, 230);" ><br><br>
+    </div>
+    
+    <div class="container text-center">
+        Department: <br>
+        <select id="dropDown">
+            <option> </option>
+        </select>
+    </div><br>
+    
+    <div class="text-center">
+        <input type="button" value="Add" onclick="addEmp()">
+        <input type="button" value="Cancel" onclick="redirect(`./employees.html`)"><br/><br/>
+        <div id="message" style="color: red;"></div>
+        <div id="message2" style="color: red;"></div>
+    </div> 
+
+<script>
+
+    const urlDeps = "http://localhost:3000/departments"
+    const urlEmps = "http://localhost:3000/employees"
+    const dropDown = document.getElementById("dropDown")
+    const name = document.getElementById("name")
+    const message = document.getElementById("message")
+    const message2 = document.getElementById("message2")
+    const date = new Date()
+    const accessToken = sessionStorage['accessToken'];
+    const paramsToken = { headers: { 'accessToken': accessToken }}
+
+    function redirect(url) {
+    location.href = url
+    }
+
+    function logout(){
+        sessionStorage.clear()
+        location.href = "./login.html"
+      }
+
+    async function getData(){
+        const resp = await fetch(urlDeps, {...paramsToken, method:"GET"})
+        const data = await resp.json()
+        if(resp.status == 500 || resp.status == 401){
+          sessionStorage["error"] = data["message"]
+          location.href = "./login.html"
+        }
+        data.forEach(dep => {
+            const newOptionDep = document.createElement("option")
+            newOptionDep.innerText = dep.depInfo.depName
+            newOptionDep.value = dep.depInfo.depId
+            dropDown.appendChild(newOptionDep)})
+    }
+
+    async function addEmp(){
+        const obj = {fullName: name.value, depId: dropDown.value, startYear: date.getYear() + 1900}
+        const params = {method: "POST",
+            body: JSON.stringify(obj),
+            headers: {...paramsToken.headers, "Content-type": "application/json"}}
+        const resp = await fetch(urlEmps, params)
+        if(resp.status == 201){
+            const data = await resp.json()
+            message.innerText = data.Message
+        }else{
+            const data = await resp.json()
+            message.innerText = data.fullName
+            message2.innerText = data.startYear
+        }
+        
+    }
+</script>
+</body>
+</html>

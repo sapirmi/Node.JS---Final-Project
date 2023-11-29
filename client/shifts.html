@@ -1,0 +1,220 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous"
+    />
+</head>
+
+
+<body onload="main()">
+
+    <div class="topnav">
+        <a href="./departments.html" style="border: 1px solid black; color: black;">Departments</a>
+        <a href="./employees.html" style="border: 1px solid black; color: black;">Employees</a>
+        <a href="./shifts.html" style="border: 1px solid black; color: black;">Shifts</a>
+        <a href="./users.html" style="border: 1px solid black; color: black;">Users</a>
+        <a style="border: 1px solid black;" onclick="logout()">Logout</a>
+      </div>
+      
+    <div style="height: 50px;"></div>
+        <h1 class="display-3 text-center">Shifts</h1>
+
+    <div style="height: 30px;"></div>
+        
+    <div class="container text-center">
+        Select employee: <br>
+        <select id="dropDownEmps" onchange="getEmp()">
+            <option> </option>
+        </select>
+    </div><br>
+
+    <div class="container" style="display: none">
+        <table class="table table-bordered" id="table">
+            <tr>
+                <th style="background-color: rgb(151, 220, 230);">Date</th>
+                <th style="background-color: rgb(151, 220, 230);">From</th>
+                <th style="background-color: rgb(151, 220, 230);">To</th>
+                <th style="background-color: rgb(151, 220, 230);">Update</th>
+            </tr>  
+        </table>
+
+    </div><br>
+
+    <div class="container text-center" style="display: none" id="empData">
+        <div class="container" >
+            <div id="message1" style="color: red;"></div><br/>
+            <table class="table table-bordered" id="table">
+                <thead>
+                    <tr>
+                        <th style="background-color: rgb(151, 220, 230);">Date</th>
+                        <th style="background-color: rgb(151, 220, 230);">From</th>
+                        <th style="background-color: rgb(151, 220, 230);">To</th>
+                        <th style="background-color: rgb(151, 220, 230);">Update</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table></div><br/>
+
+            <input type="button" value="Create New Shift" onclick="showCreate()"><br/><br/>
+            <div id="message2" style="color: red;"></div>
+            <div id="message3" style="color: red;"></div>
+            <div style="display: none;" id="creatShiftData">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="background-color: rgb(151, 220, 230);">Date</th>
+                            <th style="background-color: rgb(151, 220, 230);">From</th>
+                            <th style="background-color: rgb(151, 220, 230);">To</th>
+                            <th style="background-color: rgb(151, 220, 230);">Update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="date" id="newShiftDate"></td>
+                            <td id="newShiftStartTd"></td>
+                            <td id="newShiftEndTd"></td>
+                            <td><input type="button" value="Create Shift" onclick="addShift()"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+    </div><br/>
+
+    
+        
+    
+<script>
+
+    const urlEmps = "http://localhost:3000/employees"
+    const urlShits = "http://localhost:3000/shifts"
+    const dropDownEmps = document.getElementById("dropDownEmps")
+    const empData = document.getElementById("empData")
+    const tbody = document.getElementById("tbody")
+    const message1 = document.getElementById("message1")
+    const message2 = document.getElementById("message2")
+    const message3 = document.getElementById("message3")
+    const creatShiftData = document.getElementById("creatShiftData")
+    const accessToken = sessionStorage['accessToken'];
+    const paramsToken = { headers: { 'accessToken': accessToken }}
+    
+    function logout(){
+        sessionStorage.clear()
+        location.href = "./login.html"
+      }
+
+    function getOptionsHours(idName, fatherTag){
+        const selectTag = document.createElement("select")
+        selectTag.id = idName
+        for(let i=0; i<24; i++){
+            optionTag = document.createElement("option")
+            optionTag.text = i
+            selectTag.appendChild(optionTag)
+            fatherTag.appendChild(selectTag)
+        }}
+
+    async function getData(url){
+        const resp = await fetch(url, {...paramsToken, method:"GET"})
+        const data = await resp.json()
+        if(resp.status == 500 || resp.status == 401){
+          sessionStorage["error"] = data["message"]
+          location.href = "./login.html"
+        }
+        return data
+    }
+
+    async function main(){
+        const data = await getData(urlEmps)
+        dropDownEmps.innerHTML = ""
+        data.forEach(emp => {
+            const newOptionEmp = document.createElement("option")
+            newOptionEmp.innerText = emp.fullName
+            newOptionEmp.value = emp.empId
+            dropDownEmps.appendChild(newOptionEmp)
+        })
+    }
+
+    async function getEmp(){
+        empData.style.display = "block"
+
+        const data = await getData(`${urlEmps}/byEmp/${dropDownEmps.value}`)
+        tbody.innerHTML = ""
+        data.shiftsInfo.forEach(shift => {
+            const newRow = tbody.insertRow();
+            newRow.insertCell(0).textContent = shift.shiftDate
+
+            const startHourTag = `fromHour${shift.shiftId}`
+            getOptionsHours(startHourTag, newRow.insertCell(1))
+            document.getElementById(startHourTag).value = shift.startHour
+
+            const endHourTag = `toHour${shift.shiftId}`
+            getOptionsHours(endHourTag, newRow.insertCell(2))
+            document.getElementById(endHourTag).value = shift.endHour
+
+            const update = newRow.insertCell(3)
+            const btn = document.createElement("input")
+            btn.type = "button"
+            btn.id = shift.shiftId
+            btn.value = "Update Shift"
+            btn.onclick = updateShift
+            update.appendChild(btn)
+        })}
+
+    async function updateShift(e){
+        const shiftId = e.target.id
+        const start = document.getElementById(`fromHour${shiftId}`).value
+        const end = document.getElementById(`toHour${shiftId}`).value
+
+        if(start > end){
+            message1.innerText = "Start Hour Must Be Greater Than End Hour"
+        }else{
+            const obj = {startHour: start,
+                        endHour: end}
+            const params = {...paramsToken, 
+                        method: "PUT",
+                        body: JSON.stringify(obj),
+                        headers: {"Content-type": "application/json"}}
+            const resp = await fetch(`${urlShits}/${shiftId}`, params)
+            const messageText = await resp.json()
+            message1.innerText = messageText.Message
+        }
+    }
+
+    function showCreate(){
+        creatShiftData.style.display = "block"
+        getOptionsHours("newShiftStart", document.getElementById("newShiftStartTd"))
+        getOptionsHours("newShiftEnd", document.getElementById("newShiftEndTd"))
+    }
+
+    async function addShift(){
+        const obj = {shiftDate: document.getElementById("newShiftDate").valueAsDate.toDateString(),
+                    startHour: document.getElementById("newShiftStart").value,
+                    endHour: document.getElementById("newShiftEnd").value,
+                    empId: dropDownEmps.value}
+        const params = {method: "POST",
+            body: JSON.stringify(obj),
+            headers: {...paramsToken.headers, "Content-type": "application/json"}}
+        const resp = await fetch(urlShits, params)
+        if(resp.status == 201){
+            const data = await resp.json()
+            message2.innerText = data.Message
+        }else{
+            const data = await resp.json()
+            message2.innerText = data.shiftDate
+            message3.innerText = data.startHour
+        }
+
+        }
+
+</script>
+</body>
+</html>

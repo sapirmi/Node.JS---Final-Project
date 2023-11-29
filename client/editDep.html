@@ -1,0 +1,180 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous">
+</head>
+
+<body onload="main()">
+
+    <div class="topnav">
+        <a href="./departments.html" style="border: 1px solid black; color: black;">Departments</a>
+        <a href="./employees.html" style="border: 1px solid black; color: black;">Employees</a>
+        <a href="./shifts.html" style="border: 1px solid black; color: black;">Shifts</a>
+        <a href="./users.html" style="border: 1px solid black; color: black;">Users</a>
+        <a style="border: 1px solid black;" onclick="logout()">Logout</a>
+      </div>
+      
+    <div style="height: 50px;"></div>
+        <h1 class="display-3 text-center">Update Department</h1><br>
+
+    <form>
+        <div class="container text-center">
+            Department: <br>
+            <select id="dropDownDeps" onchange="getAllEmps()">
+                <option> </option>
+            </select>
+        </div><br>
+        
+        <div class="container text-center">
+            Manager's Name: <br>
+            <select id="dropDownMan"></select>
+        </div><br>
+    </form>
+
+
+    <div class="text-center">
+        <input type="button" value="Update department" onclick="updateDep()">
+        <input type="button" value="Delete department" onclick="deleteDep()"><br/>
+        <div id="message1" style="color: red;"></div>
+    </div><br>
+
+    <div class="container text-center">
+        Employees from defferent departments<br>
+        <select id="dropDownEmps">
+            <option> </option>
+        </select>
+    </div><br>
+    <div class="text-center">
+        <input type="button" value="Allocate employee" onclick="allocateEmp()"><br/>
+        <div id="message2" style="color: red;"></div>
+    </div><br>
+    <div class="text-center">
+        <input type="button" value="Go back to departments" onclick="redirect(`./departments.html`)">
+    </div>
+
+    <script>
+
+        const urlDeps = "http://localhost:3000/departments"
+        const urlEmps = "http://localhost:3000/employees"
+        const dropMan = document.getElementById("dropDownMan")
+        const dropEmp = document.getElementById("dropDownEmps")
+        const dropDeps = document.getElementById("dropDownDeps")
+        const message1 = document.getElementById("message1")
+        const message2 = document.getElementById("message2")
+        const depID = new URLSearchParams(window.location.search).get("id")
+        const accessToken = sessionStorage['accessToken'];
+        const paramsToken = { headers: { 'accessToken': accessToken }}
+
+        function logout(){
+        sessionStorage.clear()
+        location.href = "./login.html"
+      }
+
+        async function getData(){
+            const resp = await fetch(urlDeps, {...paramsToken, method: "GET"})
+            const data = await resp.json()
+            if(resp.status == 500 || resp.status == 401){
+                sessionStorage["error"] = data["message"]
+                location.href = "./login.html"
+            }
+            return data
+        }
+
+        function setDropDown(arr){
+            dropDeps.innerHTML = ''
+            arr.forEach(item => {
+                const newOptionDep = document.createElement("option")
+                newOptionDep.innerText = item.depInfo.depName
+                newOptionDep.value = item.depInfo.depId
+                dropDeps.appendChild(newOptionDep)
+            })
+        }
+
+        async function getAllEmps(){
+            const data = await getData()
+            const mans = data.find(item => item.depInfo.depId === +dropDeps.value).employees
+            setEmps(mans, dropMan)
+            dropMan.value = data.find(dep => dep.depInfo.depId === +dropDeps.value).managerInfo.managerId
+
+            const deps = data.filter(item => item.depInfo.depId !== +dropDeps.value)
+            const emps = deps.map(item => item.employees).flat()
+            setEmps(emps, dropEmp)
+            
+        }
+
+        async function main(){
+            setDropDown(await getData())
+            const data = await getData()
+            dropDeps.value = +depID
+            getAllEmps()
+        }
+
+        function setEmps(arr, dropDown){
+            dropDown.innerHTML = ""
+            arr.forEach(emp => {
+                const newOption = document.createElement("option")
+                newOption.innerText = emp.empName
+                newOption.value = emp.empId
+                dropDown.appendChild(newOption)
+            })
+        }
+
+        async function updateDep(){
+            const obj = {managerName: dropMan.options[dropMan.selectedIndex].text}
+            const params = {method: "PUT",
+                        body: JSON.stringify(obj),
+                        headers: {...paramsToken.headers, "Content-type": "application/json"}}
+            const resp = await fetch(`${urlDeps}/${dropDeps.value}`, params)
+            const messageText = await resp.json()
+            message1.innerText = messageText.Message
+        }
+
+        async function deleteDep(){
+            const params = {method: "DELETE",
+                headers: {...paramsToken.headers, "Content-type": "application/json"}}
+
+            const dep = dropDeps.value
+            let resp = await fetch(`${urlDeps}/${dep}`, params)
+            const messageText = await resp.json()
+            message1.innerText = messageText.Message
+
+            const emps =[]
+            const empParams = {method: "DELETE",
+                headers: {...paramsToken.headers, "Content-type": "application/json"},
+                noAction: true}
+            for(let i=0; i<dropMan.options.length; i++){
+                emps.push(dropMan.options[i].value)}
+            emps.forEach(async (emp) => {
+                let resp = await fetch(`${urlEmps}/${emp}`, empParams)
+            })
+        }
+
+        async function allocateEmp(){
+            const obj = {depId: dropDeps.value}
+            const params = {method: "PUT",
+                        body: JSON.stringify(obj),
+                        headers: {...paramsToken.headers, "Content-type": "application/json"}}
+            const resp = await fetch(`${urlEmps}/${dropEmp.value}`, params)
+            const messageText = await resp.json()
+            message2.innerText = messageText.Message
+        }
+
+    function redirect(url) {
+        location.href = url
+      }
+
+    </script>
+
+</body>
+
+</html>

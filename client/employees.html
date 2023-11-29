@@ -1,0 +1,124 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous">
+</head>
+
+<body onload="main()">
+
+    <div class="topnav">
+        <a href="./departments.html" style="border: 1px solid black; color: black;">Departments</a>
+        <a href="./employees.html" style="border: 1px solid black; color: black;">Employees</a>
+        <a href="./shifts.html" style="border: 1px solid black; color: black;">Shifts</a>
+        <a href="./users.html" style="border: 1px solid black; color: black;">Users</a>
+        <a style="border: 1px solid black;" onclick="logout()">Logout</a>
+      </div>
+      
+    <div style="height: 50px;"></div>
+        <h1 class="display-3 text-center">Employees</h1><br>
+
+    <div class="container text-center">
+        Filter by department<br>
+        <select id="dropDown" onchange="getTable()">
+            <option> </option>
+        </select>
+    </div><br>
+
+    <div class="container">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th style="background-color: rgb(151, 220, 230);">Full Name</th>
+                    <th style="background-color: rgb(151, 220, 230);">Department</th>
+                    <th style="background-color: rgb(151, 220, 230);">Shifts</th>
+                </tr> 
+            </thead>
+            <tbody id="tbody"></tbody>  
+        </table>
+
+    </div><br>
+
+    <div class="text-center">
+        <input type="button" value="Add New Employee" onclick="redirect(`./newEmp.html`)">
+    </div>
+
+<script>
+    const urlDeps = "http://localhost:3000/departments"
+    const urlEmps = "http://localhost:3000/employees"
+    const dropDown = document.getElementById("dropDown")
+    const tbody = document.getElementById("tbody")
+    const accessToken = sessionStorage['accessToken'];
+    const paramsToken = { headers: { 'accessToken': accessToken }}
+
+    function redirect(url) {
+        location.href = url
+      }
+
+    function logout(){
+        sessionStorage.clear()
+        location.href = "./login.html"
+    }
+
+    async function getData(url){
+        const resp = await fetch(url, {...paramsToken, method: "GET"})
+        const data = await resp.json()
+        if(resp.status == 500 || resp.status == 401){
+          sessionStorage["error"] = data["message"]
+          location.href = "./login.html"
+        }
+        return data
+    }
+
+    async function getTable() {
+        const emps = await getData(`${urlEmps}/byDep/${dropDown.value}`)
+
+        tbody.innerHTML = ""
+        emps.forEach((item, index) => {
+          const newRow = tbody.insertRow();
+
+          const empCell = newRow.insertCell(0);
+          const empLink = document.createElement("a");
+          empLink.textContent = item.fullName;
+          empLink.href = `./editEmp.html?id=${item.empId}`;
+          empCell.appendChild(empLink);
+
+          const depCell = newRow.insertCell(1)
+          const depLink = document.createElement("a");
+          depLink.textContent = dropDown.options[dropDown.selectedIndex].text;
+          depLink.href = `./editDep.html?id=${dropDown.value}`;
+          depCell.appendChild(depLink);
+
+          const shiftCell = newRow.insertCell(2);
+          const shiftList = document.createElement("ul")
+          item.shiftsInfo.forEach((shift) => {
+            const shiftItem = document.createElement("li")
+            shiftItem.textContent = `Date: ${shift.shiftDate} Hours: ${shift.startHour}-${shift.endHour}`;
+            shiftList.appendChild(shiftItem)
+          });
+          shiftCell.appendChild(shiftList)
+        });
+      }
+
+    async function main(){
+        const deps = await getData(urlDeps)
+        deps.forEach(dep => {
+            const newOptionDep = document.createElement("option")
+            newOptionDep.innerText = dep.depInfo.depName
+            newOptionDep.value = dep.depInfo.depId
+            dropDown.appendChild(newOptionDep)})        
+    }
+</script>
+
+</body>
+
+</html>
